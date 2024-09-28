@@ -3,7 +3,7 @@ name: Build and Deploy Spring Boot WAR
 on:
   push:
     branches:
-      - main
+      - usbbogtesting
 
 jobs:
   build:
@@ -42,30 +42,31 @@ jobs:
       - name: Download WAR artifact
         uses: actions/download-artifact@v3
         with:
-          name: demo-war
+          name: andres-war
 
       - name: List target directory contents
         run: ls -l ./
 
       - name: Rename WAR file
-        run: mv demo-1.0.1.war demo.war
+        run: mv andres-1.0.1.war andres.war
 
-      - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Install sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
 
-      - name: Add SSH Key to known_hosts
+      - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-
-      - name: Debug SSH Agent
-        run: ssh-add -l
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
       - name: Upload WAR to server
-        run: scp -v demo.war ubuntu@${{ secrets.SERVER_IP }}:/opt/tomcat/webapps/
-
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: sshtesting
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: 22
+          source: "andres.war"
+          target: ${{ secrets.SERVER_IP }}
 
   test:
     runs-on: ubuntu-latest
@@ -76,14 +77,14 @@ jobs:
         run: sleep 3
 
       - name: Test GET all values
-        run: curl -f --location 'https://${{ secrets.SERVER_IP }}:8443/demo/api/v1' --insecure
+        run: curl -f --location 'https://${{ secrets.SERVER_IP }}:8443/andres/api/v1' --insecure
 
       - name: Test GET specific value
-        run: curl -f --location 'https://${{ secrets.SERVER_IP }}:8443/demo/api/v1/1' --insecure
+        run: curl -f --location 'https://${{ secrets.SERVER_IP }}:8443/andres/api/v1/1' --insecure
 
       - name: Test POST values
         run: |
-          curl -f --location --request POST "https://${{ secrets.SERVER_IP }}:8443/demo/api/v1" \
+          curl -f --location --request POST "https://${{ secrets.SERVER_IP }}:8443/andres/api/v1" \
           --data 'Chile' \
           --insecure \
           --header 'Content-Type: text/plain'
@@ -96,4 +97,4 @@ jobs:
           --insecure
 
       - name: Test DELETE values
-        run: curl -f --location --request DELETE 'https://${{ secrets.SERVER_IP }}:8443/demo/api/v1/6' --insecure
+        run: curl -f --location --request DELETE 'https://${{ secrets.SERVER_IP }}:8443/andres/api/v1/6' --insecure
